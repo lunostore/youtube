@@ -1,13 +1,14 @@
 /**
  * NOIR AUDIO - GitHub Auto Sync Bot
- * بوت المزامنة التلقائية مع GitHub
- * يراقب أي تعديل ويرفعه تلقائياً - مع دعم تسجيل الدخول بـ GitHub CLI
+ * بوت المزامنة التلقائية مع GitHub (ES Module)
  */
 
-const { exec, execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { exec, execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_URL = 'https://github.com/lunostore/youtube.git';
 const IGNORED = ['.git', 'node_modules', 'package-lock.json'];
 
@@ -20,9 +21,9 @@ const C = {
   bold:   (s) => `\x1b[1m${s}\x1b[0m`,
 };
 
-function run(cmd, cwd) {
+function run(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { cwd: cwd || process.cwd() }, (err, stdout, stderr) => {
+    exec(cmd, { cwd: __dirname }, (err, stdout, stderr) => {
       if (err) reject({ err, stdout, stderr });
       else resolve(stdout.trim());
     });
@@ -31,9 +32,9 @@ function run(cmd, cwd) {
 
 // ─── Check / Setup Git Auth ───────────────────────────
 async function checkAndSetupAuth() {
-  console.log(C.cyan('\n🔐 جاري فحص بيانات GitHub...\n'));
+  console.log(C.cyan('\n Checking GitHub credentials...\n'));
 
-  // 1. Check if gh CLI is installed
+  // Check if gh CLI is installed and logged in
   let ghAvailable = false;
   try {
     execSync('gh --version', { stdio: 'ignore' });
@@ -41,39 +42,30 @@ async function checkAndSetupAuth() {
   } catch (_) {}
 
   if (ghAvailable) {
-    // Check if already logged in
     try {
       const user = execSync('gh api user --jq .login', { encoding: 'utf8' }).trim();
-      console.log(C.green(`✅ مسجّل الدخول بحساب GitHub: @${user}`));
-      return true;
+      console.log(C.green(`Connected as: @${user}`));
+      return;
     } catch (_) {
-      // Not logged in — open browser auth
-      console.log(C.yellow('⚡ فتح صفحة تسجيل الدخول بـ GitHub...'));
+      console.log(C.yellow(' Opening GitHub login in browser...'));
       try {
         execSync('gh auth login --web --git-protocol https', { stdio: 'inherit' });
-        console.log(C.green('\n✅ تم تسجيل الدخول بنجاح!'));
-        return true;
+        console.log(C.green('\n Login successful!'));
       } catch (e) {
-        console.log(C.red('❌ فشل تسجيل الدخول. يرجى تشغيل: gh auth login'));
+        console.log(C.red(' Login failed. Run: gh auth login'));
       }
     }
   } else {
-    // No gh CLI — check if git credential helper works
+    // Test if push works without gh CLI
     try {
-      await run('git ls-remote --heads ' + REPO_URL);
-      console.log(C.green('✅ GitHub متصل بنجاح عبر Git Credentials!'));
-      return true;
+      await run(`git ls-remote --heads ${REPO_URL}`);
+      console.log(C.green(' GitHub connected via Git Credentials!'));
     } catch (_) {
-      // Open GitHub login page in browser
-      console.log(C.yellow('\n⚡ لم يتم اكتشاف GitHub CLI. يرجى تسجيل الدخول عبر المتصفح...'));
-      console.log('   https://github.com/login\n');
-      try {
-        execSync('start https://github.com/login', { stdio: 'ignore' });
-      } catch (_) {}
-      console.log(C.yellow('💡 بعد تسجيل الدخول، تأكد أن Git credentials صحيحة وأعد تشغيل البوت.'));
+      console.log(C.yellow('\n GitHub not authenticated. Opening login page...'));
+      try { execSync('start https://github.com/login', { stdio: 'ignore' }); } catch (_) {}
+      console.log(C.yellow(' After login, re-run the bot.'));
     }
   }
-  return false;
 }
 
 // ─── Ensure remote is set ─────────────────────────────
@@ -84,7 +76,7 @@ async function ensureRemote() {
       await run(`git remote add origin ${REPO_URL}`);
     }
   } catch (_) {
-    await run(`git remote add origin ${REPO_URL}`);
+    try { await run(`git remote add origin ${REPO_URL}`); } catch (_) {}
   }
 }
 
@@ -97,56 +89,52 @@ async function syncToGitHub(triggerFile) {
   isPushing = true;
 
   const now = new Date();
-  const timeStr = now.toLocaleTimeString('ar-EG', { hour12: true });
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: true });
   const dateStr = now.toISOString().split('T')[0];
-  const fileName = triggerFile ? path.basename(triggerFile) : 'الملفات';
+  const fileName = triggerFile ? path.basename(triggerFile) : 'files';
   const commitMsg = `Update [${fileName}] - ${dateStr} ${timeStr}`;
 
-  console.log(C.yellow(`\n⏳ تعديل اكتُشف في: ${fileName}`));
-  console.log(`🚀 رفع التحديثات إلى GitHub (${timeStr})...`);
+  console.log(C.yellow(`\n Change detected: ${fileName}`));
+  console.log(`Pushing to GitHub (${timeStr})...`);
 
   try {
     await run('git add -A');
 
     try {
       const commitOut = await run(`git commit -m "${commitMsg}"`);
-      console.log(C.green(`✅ ${commitOut.split('\n')[0]}`));
+      console.log(C.green(` ${commitOut.split('\n')[0]}`));
     } catch (e) {
-      if ((e.stdout || '').includes('nothing to commit') ||
-          (e.stderr || '').includes('nothing to commit')) {
-        console.log('ℹ️  لا توجد تغييرات جديدة.');
+      const msg = (e.stdout || '') + (e.stderr || '');
+      if (msg.includes('nothing to commit')) {
+        console.log(' No changes to commit.');
         isPushing = false;
-        console.log(C.cyan('\n👀 البوت يراقب الملفات...\n'));
+        console.log(C.cyan('\n Watching files...\n'));
         return;
       }
       throw e;
     }
 
     const pushOut = await run('git push origin main');
-    console.log(C.green('🎉 رُفع بنجاح إلى GitHub!'));
+    console.log(C.green(' Pushed to GitHub successfully!'));
     if (pushOut) console.log(pushOut);
 
   } catch (err) {
-    const msg = err.stderr || err.stdout || String(err.err || err);
-    // Token/auth errors → reopen login
-    if (msg.includes('Authentication') || msg.includes('403') ||
-        msg.includes('could not read Username')) {
-      console.log(C.red('\n❌ خطأ في المصادقة — يرجى تسجيل الدخول:'));
+    const msg = (err.stderr || err.stdout || String(err.err || err));
+    if (msg.includes('Authentication') || msg.includes('403') || msg.includes('could not read Username')) {
+      console.log(C.red('\n Auth error - opening GitHub login...'));
       try { execSync('start https://github.com/login', { stdio: 'ignore' }); } catch (_) {}
     } else {
-      console.log(C.red(`\n❌ خطأ أثناء الرفع:\n${msg}`));
+      console.log(C.red(`\n Push error:\n${msg}`));
     }
   } finally {
     isPushing = false;
-    console.log(C.cyan('\n👀 البوت يراقب الملفات...\n'));
+    console.log(C.cyan('\n Watching files...\n'));
   }
 }
 
 // ─── Watch Files ──────────────────────────────────────
 function startWatcher() {
-  const projectDir = process.cwd();
-
-  fs.watch(projectDir, { recursive: true }, (eventType, filename) => {
+  fs.watch(__dirname, { recursive: true }, (eventType, filename) => {
     if (!filename) return;
     for (const ig of IGNORED) {
       if (filename.startsWith(ig) || filename.includes(path.sep + ig)) return;
@@ -154,19 +142,16 @@ function startWatcher() {
     if (pushTimeout) clearTimeout(pushTimeout);
     pushTimeout = setTimeout(() => syncToGitHub(filename), 2000);
   });
-
-  console.log(C.cyan('👀 البوت يراقب الملفات...\n'));
+  console.log(C.cyan(' Watching files...\n'));
 }
 
 // ─── Main ─────────────────────────────────────────────
 console.log(C.bold(C.green('\n==================================================')));
-console.log(C.bold(C.cyan('   🤖 بوت رفع GitHub التلقائي')));
+console.log(C.bold(C.cyan('    GitHub Auto-Push Bot - Noir Audio')));
 console.log(C.bold(C.green('==================================================')));
-console.log(`📌 المستودع: ${REPO_URL}`);
+console.log(`  Repo: ${REPO_URL}`);
 
-(async () => {
-  await checkAndSetupAuth();
-  await ensureRemote();
-  await syncToGitHub('بدء التشغيل');
-  startWatcher();
-})();
+await checkAndSetupAuth();
+await ensureRemote();
+await syncToGitHub('startup');
+startWatcher();
