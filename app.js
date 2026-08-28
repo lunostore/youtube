@@ -500,62 +500,23 @@ function setupScrubber() {
   });
 }
 
-// COBALT-BASED IN-BROWSER MP3 DOWNLOAD
-// Uses public Cobalt API instances (cobalt.tools) which are regularly maintained
-// Verified working Cobalt instances with CORS + API enabled (checked 2026-08-28)
-const COBALT_INSTANCES = [
-  'https://kityune.imput.net',
-  'https://nachos.imput.net',
-  'https://sunny.imput.net',
-  'https://blossom.imput.net',
-  'https://cobalt-backend.canine.tools',
-  'https://downloadapi.stuff.solutions',
-  'https://capi.3kh0.net',
-  'https://cobalt-api.meowing.de',
-  'https://cobalt-api.clxxped.lol',
-];
+// ─── YOUR YT-DLP API SERVER ─────────────────────────
+// ضع رابط السيرفر بتاعك هنا بعد الرفع على HuggingFace/Render/Railway
+const YTDLP_API = 'https://YOUR-SPACE.hf.space';
 
 async function tryDownloadViaCobalt(videoId) {
   const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-  for (const instance of COBALT_INSTANCES) {
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 8000);
-
-      const res = await fetch(`${instance}/api/json`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: ytUrl,
-          downloadMode: 'audio',
-          audioFormat: 'mp3',
-          audioBitrate: '128',
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(tid);
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-
-      // Cobalt returns status "redirect" or "stream" with a URL
-      if (data && (data.status === 'redirect' || data.status === 'stream') && data.url) {
-        return data.url;
-      }
-      // Newer Cobalt format
-      if (data && data.url) {
-        return data.url;
-      }
-    } catch (e) {}
-  }
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
+    const audioEndpoint = `${YTDLP_API}/audio?url=${encodeURIComponent(ytUrl)}`;
+    const res = await fetch(audioEndpoint, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(tid);
+    if (res.ok) return audioEndpoint;
+  } catch (e) {}
   return null;
 }
+
 
 function setupDownloadHandlers() {
   const btn = elements.downloadMp3Btn;
