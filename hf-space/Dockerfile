@@ -1,14 +1,18 @@
 FROM python:3.11-slim
 
-# Install ffmpeg (needed by yt-dlp for audio conversion)
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ffmpeg curl && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR $HOME/app
 
-COPY app.py .
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+COPY --chown=user . .
 
 EXPOSE 7860
 
