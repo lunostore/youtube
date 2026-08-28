@@ -1,157 +1,136 @@
 /**
- * NOIR AUDIO - GitHub Auto Sync Bot
- * بوت المزامنة التلقائية مع GitHub (ES Module)
+ * GitHub Auto-Push Bot
+ * - يراقب الملفات
+ * - يفتح نافذة اختيار حساب GitHub عند الحاجة
+ * - يرفع تلقائياً عند أي تغيير
  */
 
-import { exec, execSync } from 'child_process';
-import fs from 'fs';
+import { exec } from 'child_process';
+import { watch } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_URL = 'https://github.com/lunostore/youtube.git';
-const IGNORED = ['.git', 'node_modules', 'package-lock.json'];
+const REPO = 'https://github.com/lunostore/youtube.git';
+const IGNORED = ['.git', 'node_modules'];
 
-// ─── Colors ───────────────────────────────────────────
-const C = {
-  green:  (s) => `\x1b[32m${s}\x1b[0m`,
-  cyan:   (s) => `\x1b[36m${s}\x1b[0m`,
-  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
-  red:    (s) => `\x1b[31m${s}\x1b[0m`,
-  bold:   (s) => `\x1b[1m${s}\x1b[0m`,
+// ── Helpers ──────────────────────────────────────────
+const run = (cmd) =>
+  new Promise((res, rej) =>
+    exec(cmd, { cwd: __dirname }, (err, out, stderr) =>
+      err ? rej(stderr || out) : res(out.trim())
+    )
+  );
+
+const log = {
+  ok:   (m) => console.log(`\x1b[32m✅ ${m}\x1b[0m`),
+  warn: (m) => console.log(`\x1b[33m⚡ ${m}\x1b[0m`),
+  err:  (m) => console.log(`\x1b[31m❌ ${m}\x1b[0m`),
+  info: (m) => console.log(`\x1b[36mℹ️  ${m}\x1b[0m`),
 };
 
-function run(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, { cwd: __dirname }, (err, stdout, stderr) => {
-      if (err) reject({ err, stdout, stderr });
-      else resolve(stdout.trim());
-    });
-  });
+// ── Open GitHub login in browser ─────────────────────
+function openGitHubLogin() {
+  log.warn('فتح صفحة اختيار حساب GitHub في المتصفح...');
+  exec('start https://github.com/login');
 }
 
-// ─── Check / Setup Git Auth ───────────────────────────
-async function checkAndSetupAuth() {
-  console.log(C.cyan('\n Checking GitHub credentials...\n'));
-
-  // Check if gh CLI is installed and logged in
-  let ghAvailable = false;
+// ── Test if push works ────────────────────────────────
+async function testAuth() {
   try {
-    execSync('gh --version', { stdio: 'ignore' });
-    ghAvailable = true;
-  } catch (_) {}
-
-  if (ghAvailable) {
-    try {
-      const user = execSync('gh api user --jq .login', { encoding: 'utf8' }).trim();
-      console.log(C.green(`Connected as: @${user}`));
-      return;
-    } catch (_) {
-      console.log(C.yellow(' Opening GitHub login in browser...'));
-      try {
-        execSync('gh auth login --web --git-protocol https', { stdio: 'inherit' });
-        console.log(C.green('\n Login successful!'));
-      } catch (e) {
-        console.log(C.red(' Login failed. Run: gh auth login'));
-      }
-    }
-  } else {
-    // Test if push works without gh CLI
-    try {
-      await run(`git ls-remote --heads ${REPO_URL}`);
-      console.log(C.green(' GitHub connected via Git Credentials!'));
-    } catch (_) {
-      console.log(C.yellow('\n GitHub not authenticated. Opening login page...'));
-      try { execSync('start https://github.com/login', { stdio: 'ignore' }); } catch (_) {}
-      console.log(C.yellow(' After login, re-run the bot.'));
-    }
+    await run(`git ls-remote --heads ${REPO}`);
+    return true;
+  } catch {
+    return false;
   }
 }
 
-// ─── Ensure remote is set ─────────────────────────────
-async function ensureRemote() {
-  try {
-    const remotes = await run('git remote -v');
-    if (!remotes.includes('origin')) {
-      await run(`git remote add origin ${REPO_URL}`);
-    }
-  } catch (_) {
-    try { await run(`git remote add origin ${REPO_URL}`); } catch (_) {}
-  }
-}
+// ── Push to GitHub ────────────────────────────────────
+let busy = false;
+let timer = null;
 
-// ─── Push to GitHub ───────────────────────────────────
-let isPushing = false;
-let pushTimeout = null;
+async function push(file) {
+  if (busy) return;
+  busy = true;
 
-async function syncToGitHub(triggerFile) {
-  if (isPushing) return;
-  isPushing = true;
+  const name = file ? path.basename(file) : 'ملفات المشروع';
+  const date = new Date().toLocaleString('ar-EG');
+  const msg  = `Update [${name}] - ${date}`;
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour12: true });
-  const dateStr = now.toISOString().split('T')[0];
-  const fileName = triggerFile ? path.basename(triggerFile) : 'files';
-  const commitMsg = `Update [${fileName}] - ${dateStr} ${timeStr}`;
-
-  console.log(C.yellow(`\n Change detected: ${fileName}`));
-  console.log(`Pushing to GitHub (${timeStr})...`);
+  log.warn(`تغيير في: ${name}`);
+  console.log(`   الرفع إلى GitHub...`);
 
   try {
     await run('git add -A');
 
+    // commit — if nothing changed, skip silently
     try {
-      const commitOut = await run(`git commit -m "${commitMsg}"`);
-      console.log(C.green(` ${commitOut.split('\n')[0]}`));
+      const out = await run(`git commit -m "${msg}"`);
+      log.ok(out.split('\n')[0]);
     } catch (e) {
-      const msg = (e.stdout || '') + (e.stderr || '');
-      if (msg.includes('nothing to commit')) {
-        console.log(' No changes to commit.');
-        isPushing = false;
-        console.log(C.cyan('\n Watching files...\n'));
+      if (String(e).includes('nothing to commit')) {
+        log.info('لا يوجد تغييرات.');
+        busy = false;
         return;
       }
       throw e;
     }
 
-    const pushOut = await run('git push origin main');
-    console.log(C.green(' Pushed to GitHub successfully!'));
-    if (pushOut) console.log(pushOut);
+    await run('git push origin main --force');
+    log.ok('تم الرفع إلى GitHub بنجاح! 🎉');
 
-  } catch (err) {
-    const msg = (err.stderr || err.stdout || String(err.err || err));
-    if (msg.includes('Authentication') || msg.includes('403') || msg.includes('could not read Username')) {
-      console.log(C.red('\n Auth error - opening GitHub login...'));
-      try { execSync('start https://github.com/login', { stdio: 'ignore' }); } catch (_) {}
+  } catch (e) {
+    const msg = String(e);
+    if (
+      msg.includes('Authentication') ||
+      msg.includes('403') ||
+      msg.includes('could not read') ||
+      msg.includes('repository not found')
+    ) {
+      log.err('مشكلة في المصادقة — افتح المتصفح وسجّل الدخول:');
+      openGitHubLogin();
     } else {
-      console.log(C.red(`\n Push error:\n${msg}`));
+      log.err(`خطأ في الرفع:\n${msg}`);
     }
   } finally {
-    isPushing = false;
-    console.log(C.cyan('\n Watching files...\n'));
+    busy = false;
+    log.info('يراقب الملفات...\n');
   }
 }
 
-// ─── Watch Files ──────────────────────────────────────
+// ── Watch ─────────────────────────────────────────────
 function startWatcher() {
-  fs.watch(__dirname, { recursive: true }, (eventType, filename) => {
+  watch(__dirname, { recursive: true }, (_, filename) => {
     if (!filename) return;
     for (const ig of IGNORED) {
-      if (filename.startsWith(ig) || filename.includes(path.sep + ig)) return;
+      if (filename.startsWith(ig)) return;
     }
-    if (pushTimeout) clearTimeout(pushTimeout);
-    pushTimeout = setTimeout(() => syncToGitHub(filename), 2000);
+    clearTimeout(timer);
+    timer = setTimeout(() => push(filename), 2000);
   });
-  console.log(C.cyan(' Watching files...\n'));
 }
 
-// ─── Main ─────────────────────────────────────────────
-console.log(C.bold(C.green('\n==================================================')));
-console.log(C.bold(C.cyan('    GitHub Auto-Push Bot - Noir Audio')));
-console.log(C.bold(C.green('==================================================')));
-console.log(`  Repo: ${REPO_URL}`);
+// ── Main ──────────────────────────────────────────────
+console.log('\x1b[1m\x1b[36m');
+console.log('================================================');
+console.log('   GitHub Auto-Push Bot');
+console.log(`   Repo: ${REPO}`);
+console.log('================================================\x1b[0m\n');
 
-await checkAndSetupAuth();
-await ensureRemote();
-await syncToGitHub('startup');
+// Check auth first
+const authed = await testAuth();
+if (!authed) {
+  log.err('لا يوجد اتصال بـ GitHub!');
+  openGitHubLogin();
+  console.log('\n  بعد تسجيل الدخول، أعد تشغيل البوت.\n');
+  process.exit(1);
+}
+
+log.ok('GitHub متصل!');
+
+// Initial push of any pending changes
+await push(null);
+
+// Start watching
 startWatcher();
+log.info('البوت يراقب الملفات — سيرفع تلقائياً عند أي تغيير.\n');
