@@ -506,20 +506,8 @@ const YTDLP_API = 'https://yousef891238-088098.hf.space';
 
 async function tryDownloadViaCobalt(videoId) {
   const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  try {
-    // Check if server is alive via /health
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${YTDLP_API}/health`, { signal: controller.signal });
-    clearTimeout(tid);
-    if (res.ok) {
-      // Return direct download URL - browser will handle the file download
-      return `${YTDLP_API}/audio?url=${encodeURIComponent(ytUrl)}`;
-    }
-  } catch (e) {}
-  return null;
+  return `${YTDLP_API}/audio?url=${encodeURIComponent(ytUrl)}`;
 }
-
 
 function setupDownloadHandlers() {
   const btn = elements.downloadMp3Btn;
@@ -534,35 +522,72 @@ function setupDownloadHandlers() {
     }
 
     const videoId = state.currentVideoId;
-    const safeTitle = (state.videoTitle || 'youtube_audio').replace(/[\/\\?%*:|"<>]/g, '_');
+    const safeTitle = (state.videoTitle || 'Noir_Audio').replace(/[\/\\?%*:|"<>]/g, '_');
 
     statusBox.classList.remove('hidden');
-    statusTitle.textContent = '⚡ جاري التحقق من السيرفر...';
-    statusDesc.textContent = '';
+    statusTitle.textContent = '⏳ جاري استخراج الصوت بجودة عالية...';
+    statusDesc.innerHTML = `
+      <div style="margin-top: 8px; font-size: 13px; color: #a1a1aa;">
+        يتم تحويل المقطع وتحميله مباشرة إلى جهازك دون مغادرة الموقع. يرجى الانتظار ثوانٍ معدودة...
+      </div>
+      <div style="margin-top: 10px; height: 4px; width: 100%; background: #27272a; border-radius: 99px; overflow: hidden;">
+        <div style="height: 100%; width: 50%; background: #ffffff; border-radius: 99px; animation: pulse 1.5s infinite ease-in-out;"></div>
+      </div>
+    `;
     btn.disabled = true;
 
-    const audioUrl = await tryDownloadViaCobalt(videoId);
+    try {
+      const audioUrl = await tryDownloadViaCobalt(videoId);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
 
-    if (audioUrl) {
-      statusTitle.textContent = '✅ السيرفر جاهز — اضغط لتحميل الملف';
-      statusDesc.innerHTML = `
-        <a href="${audioUrl}" target="_blank" rel="noopener"
-          style="display:inline-block;margin-top:10px;padding:10px 24px;background:#fff;color:#000;
-                 border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:1px;">
-          ⬇️ تحميل MP3
-        </a>
-        <br><small style="color:#888;margin-top:6px;display:block;">
-          قد يستغرق التحميل 30-60 ثانية بينما يستخرج السيرفر الصوت
-        </small>
-      `;
-      btn.disabled = false;
-    } else {
-      statusTitle.textContent = '⚠️ تعذّر التحميل حالياً';
-      statusDesc.textContent = 'السيرفر لا يستجيب. حاول مجدداً بعد قليل.';
+      const response = await fetch(audioUrl, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errData = {};
+        try { errData = await response.json(); } catch(_) {}
+        throw new Error(errData.detail || errData.error || `خطأ في الخادم (${response.status})`);
+      }
+
+      // Successful MP3 stream -> create local download link
+      statusTitle.textContent = '⚡ جاري حفظ الملف على جهازك...';
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = downloadUrl;
+      a.download = `${safeTitle}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(a);
+      }, 1000);
+
+      statusTitle.textContent = '🎉 تم تحميل المقطع الصوتي بنجاح!';
+      statusDesc.textContent = 'تم حفظ الملف بصيغة MP3 في مجلد التنزيلات (Downloads) بجهازك.';
+
       setTimeout(() => {
         btn.disabled = false;
         statusBox.classList.add('hidden');
-      }, 4000);
+      }, 6000);
+
+    } catch (err) {
+      console.error('Download error:', err);
+      statusTitle.textContent = '⚠️ تعذّر التحميل في الوقت الحالي';
+      statusDesc.textContent = (err.message && err.message.length < 150) 
+        ? err.message 
+        : 'الخادم يقوم بتحديث نفسه أو المقطع غير متاح للتنزيل. يرجى المحاولة بعد قليل.';
+
+      setTimeout(() => {
+        btn.disabled = false;
+      }, 3000);
     }
   });
 }
