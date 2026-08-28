@@ -507,12 +507,15 @@ const YTDLP_API = 'https://yousef891238-088098.hf.space';
 async function tryDownloadViaCobalt(videoId) {
   const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
   try {
+    // Check if server is alive via /health
     const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 10000);
-    const audioEndpoint = `${YTDLP_API}/audio?url=${encodeURIComponent(ytUrl)}`;
-    const res = await fetch(audioEndpoint, { method: 'HEAD', signal: controller.signal });
+    const tid = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${YTDLP_API}/health`, { signal: controller.signal });
     clearTimeout(tid);
-    if (res.ok) return audioEndpoint;
+    if (res.ok) {
+      // Return direct download URL - browser will handle the file download
+      return `${YTDLP_API}/audio?url=${encodeURIComponent(ytUrl)}`;
+    }
   } catch (e) {}
   return null;
 }
