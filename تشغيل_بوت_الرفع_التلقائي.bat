@@ -1,36 +1,43 @@
 @echo off
-cd /d "%~dp0"
-title GitHub Auto-Push Bot
+title GitHub Auto Push Bot
+cd /d "D:\شغل\يوتيوب"
 
 echo.
-echo  ================================================
-echo    GitHub Auto-Push Bot
-echo  ================================================
+echo ===================================
+echo   GitHub Auto Push Bot - RUNNING
+echo ===================================
+echo   Repo: github.com/lunostore/youtube
+echo ===================================
 echo.
 
-echo [1] Checking Node.js...
-node --version
-if %errorlevel% neq 0 (
-    echo.
-    echo  ERROR: Node.js غير موجود!
-    echo  حمّل Node.js من: https://nodejs.org
-    pause
-    exit
+:loop
+echo Checking for changes...
+git add -A
+
+REM Check if there's something to commit
+git diff --cached --quiet
+if %errorlevel% equ 0 (
+    echo No changes found. Waiting 10 seconds...
+    timeout /t 10 /nobreak >nul
+    goto loop
 )
 
-echo [2] Checking Git...
-git --version
-if %errorlevel% neq 0 (
-    echo.
-    echo  ERROR: Git غير موجود!
-    pause
-    exit
+REM There are changes - commit and push
+for /f "tokens=*" %%i in ('powershell -command "Get-Date -Format \"yyyy-MM-dd HH:mm\""') do set TIMESTAMP=%%i
+git commit -m "Auto update - %TIMESTAMP%"
+
+echo Pushing to GitHub...
+git push origin main --force
+
+if %errorlevel% equ 0 (
+    echo SUCCESS: Pushed to GitHub!
+) else (
+    echo ERROR: Push failed! Check credentials.
+    echo Opening GitHub login...
+    start https://github.com/login
 )
 
-echo [3] Starting bot...
 echo.
-node auto_git_bot.js
-
-echo.
-echo  Bot stopped.
-pause
+echo Waiting 10 seconds before next check...
+timeout /t 10 /nobreak >nul
+goto loop
