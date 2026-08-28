@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOIR AUDIO • مشغل يوتيوب بدون إعلانات وتحميل الصوت</title>
+  <meta name="description" content="مشغل وتصفح يوتيوب نقي 100% بدون إعلانات - تشغيل صوت وفيديو وتحميل MP3 مباشر على جهازك">
+  
+  <!-- Fonts: Cairo & Plus Jakarta Sans & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="yt-body">
+
+  <!-- =========================================================================
+       TOP GLOBAL HEADER
+       ========================================================================= -->
+  <header class="app-top-header">
+    <div class="header-brand-wrap" id="header-brand-btn">
+      <div class="brand-logo-disc">
+        <i data-lucide="disc-3"></i>
+      </div>
+      <div class="brand-info">
+        <h1 class="brand-name">NOIR <span>AUDIO</span></h1>
+        <span class="brand-sub">مشغل يوتيوب نقي • بدون إعلانات</span>
+      </div>
+    </div>
+
+    <!-- Prominent Switcher Buttons (Always Visible at Top) -->
+    <div class="top-nav-switcher">
+      <button type="button" id="btn-goto-player" class="nav-switch-btn active" title="مشغل الصوت والتحميل">
+        <i data-lucide="music-2"></i>
+        <span>مشغل الصوت والتحميل</span>
+      </button>
+      <button type="button" id="btn-goto-explore" class="nav-switch-btn" title="تصفح يوتيوب بدون إعلانات">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"></path>
+          <polygon points="10 15 15 12 10 9 10 15" fill="currentColor"></polygon>
+        </svg>
+        <span>تصفح يوتيوب (بدون إعلانات)</span>
+      </button>
+    </div>
+
+    <div class="header-badges-wrap">
+      <span class="badge-pill"><i data-lucide="shield-check"></i> 100% بدون إعلانات</span>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN VIEW CONTAINER
+       ========================================================================= -->
+  <main class="main-app-container">
+
+    <!-- =======================================================================
+         PAGE 1: PLAYER & DOWNLOADER (DEFAULT ON OPEN)
+         ======================================================================= -->
+    <section id="page-player" class="page-view active">
+      
+      <!-- URL Input Section -->
+      <div class="search-input-card">
+        <form id="url-player-form" class="url-flex-form">
+          <div class="input-inner">
+            <span class="input-icon"><i data-lucide="link-2"></i></span>
+            <input 
+              type="text" 
+              id="player-url-input" 
+              placeholder="ضع رابط فيديو يوتيوب أو Shorts هنا لتشغيله أو تحميله مباشرة..." 
+              autocomplete="off"
+              spellcheck="false"
+              required
+            >
+            <button type="button" id="paste-url-btn" class="btn-subtle-pill" title="لصق من الحافظة">
+              <i data-lucide="clipboard"></i>
+              <span>لصق</span>
+            </button>
+            <button type="button" id="clear-url-btn" class="btn-subtle-pill hidden" title="مسح">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          
+          <button type="submit" id="load-video-btn" class="btn-main-black">
+            <span>تشغيل الآن</span>
+            <i data-lucide="arrow-left"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- Center Player Container (Shown when video is loaded) -->
+      <div id="player-master-card" class="player-master-card hidden">
+        
+        <!-- Video Header Meta & Mode Switcher -->
+        <div class="player-meta-header">
+          <div class="meta-texts">
+            <h2 id="player-video-title" class="player-video-title">عنوان الفيديو يظهر هنا</h2>
+            <div class="meta-sub">
+              <span id="player-video-channel"><i data-lucide="user"></i> القناة</span>
+              <span class="dot-sep">•</span>
+              <span id="player-video-duration"><i data-lucide="clock"></i> 00:00</span>
+            </div>
+          </div>
+
+          <!-- Dual Mode Tabs (Audio vs Cinema Video) -->
+          <div class="mode-pills">
+            <button type="button" id="tab-mode-audio" class="mode-pill-btn active">
+              <i data-lucide="music"></i>
+              <span>صوت نقي (Audio)</span>
+            </button>
+            <button type="button" id="tab-mode-video" class="mode-pill-btn">
+              <i data-lucide="video"></i>
+              <span>مشاهدة الفيديو (Cinema)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Player Stage Body -->
+        <div class="player-body-stage">
+          
+          <!-- 1. AUDIO MODE STAGE -->
+          <div id="audio-stage-box" class="audio-stage-box">
+            <div class="vinyl-disc-wrap" id="vinyl-disc-wrap" title="انقر لتشغيل / إيقاف الصوت">
+              <img id="player-thumb-img" src="" alt="Thumbnail" class="vinyl-img">
+              <div class="vinyl-center-hole"></div>
+              
+              <div class="sound-wave-badge">
+                <div class="wave-bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Canvas Audio Wave Visualizer -->
+            <div class="visualizer-box">
+              <canvas id="waveform-canvas" width="620" height="65"></canvas>
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="controls-panel">
+              
+              <!-- Timeline Scrubber -->
+              <div class="timeline-bar">
+                <span id="current-time-txt" class="time-txt mono">00:00</span>
+                <div class="scrubber-rail" id="scrubber-rail">
+                  <div class="scrubber-track">
+                    <div id="scrubber-fill" class="scrubber-fill" style="width: 0%;"></div>
+                    <div id="scrubber-knob" class="scrubber-knob" style="right: 0%;"></div>
+                  </div>
+                </div>
+                <span id="total-duration-txt" class="time-txt mono">00:00</span>
+              </div>
+
+              <!-- Buttons Bar -->
+              <div class="buttons-bar">
+                <div class="side-controls-left">
+                  <button type="button" id="loop-btn" class="ctrl-btn" title="تكرار المقطع (L)">
+                    <i data-lucide="repeat"></i>
+                  </button>
+                  <div class="speed-menu-wrap">
+                    <button type="button" id="speed-btn" class="ctrl-btn-text" title="السرعة">
+                      <span id="speed-txt">1.0x</span>
+                    </button>
+                    <div id="speed-dropdown" class="dropdown-panel hidden">
+                      <button type="button" data-speed="0.5">0.5x</button>
+                      <button type="button" data-speed="0.75">0.75x</button>
+                      <button type="button" data-speed="1.0" class="active">1.0x (عادي)</button>
+                      <button type="button" data-speed="1.25">1.25x</button>
+                      <button type="button" data-speed="1.5">1.5x</button>
+                      <button type="button" data-speed="2.0">2.0x</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="center-controls">
+                  <button type="button" id="rewind-btn" class="ctrl-btn" title="تأخير 10 ثوانٍ (←)">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span class="micro-10">10</span>
+                  </button>
+
+                  <button type="button" id="play-toggle-btn" class="play-hero-btn" title="تشغيل (مسافة)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" style="margin-left: 2px;">
+                      <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                    </svg>
+                  </button>
+
+                  <button type="button" id="forward-btn" class="ctrl-btn" title="تقديم 10 ثوانٍ (→)">
+                    <i data-lucide="rotate-cw"></i>
+                    <span class="micro-10">10</span>
+                  </button>
+                </div>
+
+                <div class="side-controls-right">
+                  <div class="volume-slider-group">
+                    <button type="button" id="mute-btn" class="ctrl-btn" title="كتم الصوت (M)">
+                      <i data-lucide="volume-2" id="volume-icon"></i>
+                    </button>
+                    <input type="range" id="volume-slider" min="0" max="100" value="100" class="volume-slider">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- 2. VIDEO MODE STAGE (16:9 Cinema) -->
+          <div id="video-stage-box" class="video-stage-box in-audio-mode">
+            <div class="video-ratio-wrap" id="video-ratio-wrap">
+              <div id="yt-player-slot"></div>
+            </div>
+            <div class="video-badge-clean">
+              <i data-lucide="sparkles"></i>
+              <span>مشاهدة نقية 100% بدون أي إعلانات</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- DIRECT MP3 DOWNLOAD SECTION -->
+        <div class="direct-download-card">
+          <div class="dl-head">
+            <div class="dl-head-icon"><i data-lucide="download-cloud"></i></div>
+            <div>
+              <h3>تحميل مقطع الصوت (MP3 Download)</h3>
+              <p>تنزيل ملف الصوت بجودة عالية 320kbps مباشرة على جهازك</p>
+            </div>
+          </div>
+
+          <!-- The Download Button -->
+          <button type="button" id="download-mp3-btn" class="download-hero-btn">
+            <div class="dl-circle-icon"><i data-lucide="arrow-down-to-line"></i></div>
+            <div class="dl-text-wrap">
+              <span class="dl-bold-text" id="dl-btn-text">تحميل الصوت MP3 الآن (مباشر على جهازك)</span>
+              <span class="dl-light-text">حفظ فوري للملف داخل مجلد التنزيلات (Downloads)</span>
+            </div>
+            <i data-lucide="download" class="dl-tail-icon"></i>
+          </button>
+
+          <!-- Download Status Indicator -->
+          <div id="download-status" class="dl-status-banner hidden">
+            <div class="spinner-sm"></div>
+            <div class="dl-status-txt">
+              <p id="status-title" class="status-h">جاري استخراج الصوت وتجهيز التحميل...</p>
+              <p id="status-desc" class="status-p">سيتم حفظ ملف الـ MP3 في جهازك تلقائياً خلال لحظات.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shortcuts Pill -->
+        <div class="shortcuts-row">
+          <span class="shortcut-pill"><kbd>Space</kbd> تشغيل/إيقاف</span>
+          <span class="shortcut-pill"><kbd>→</kbd> <kbd>←</kbd> تقديم/تأخير 10ث</span>
+          <span class="shortcut-pill"><kbd>↑</kbd> <kbd>↓</kbd> مستوى الصوت</span>
+          <span class="shortcut-pill"><kbd>M</kbd> كتم الصوت</span>
+          <span class="shortcut-pill"><kbd>L</kbd> تكرار</span>
+        </div>
+
+      </div>
+
+      <!-- Recents History Section -->
+      <section class="history-block">
+        <div class="history-block-header">
+          <div class="h-title">
+            <i data-lucide="history"></i>
+            <h3>المقاطع الأخيرة التي تم تشغيلها</h3>
+          </div>
+          <button type="button" id="clear-history-btn" class="btn-clear-history" title="مسح السجل">
+            <i data-lucide="trash-2"></i>
+            <span>مسح السجل</span>
+          </button>
+        </div>
+
+        <div id="history-grid" class="history-grid">
+          <div class="empty-history-msg" id="empty-history-msg">
+            <i data-lucide="disc"></i>
+            <p>لم تقم بتشغيل أي مقاطع بعد. الصق أي رابط لتجربته الآن!</p>
+          </div>
+        </div>
+      </section>
+
+    </section>
+
+    <!-- =======================================================================
+         PAGE 2: YOUTUBE EXPLORER (تصفح يوتيوب بدون إعلانات)
+         ======================================================================= -->
+    <section id="page-explore" class="page-view hidden">
+      
+      <!-- YouTube Search Bar -->
+      <div class="yt-search-container">
+        <form id="explore-search-form" class="yt-search-form">
+          <div class="search-input-wrap">
+            <i data-lucide="search" class="search-ico"></i>
+            <input 
+              type="text" 
+              id="explore-search-input" 
+              placeholder="ابحث عن أي فيديو أو أغنية أو بودكاست في يوتيوب..." 
+              autocomplete="off"
+              spellcheck="false"
+              required
+            >
+          </div>
+          <button type="submit" class="btn-search-submit">
+            <span>بحث</span>
+            <i data-lucide="search"></i>
+          </button>
+        </form>
+
+        <!-- Category Filter Pills -->
+        <div class="category-pills-row">
+          <button type="button" class="cat-pill active" data-query="الكل">🔥 الكل</button>
+          <button type="button" class="cat-pill" data-query="موسيقى lofi beats">🎵 موسيقى هادئة</button>
+          <button type="button" class="cat-pill" data-query="تلاوات قرآنية خاشعة">📖 تلاوات قرآنية</button>
+          <button type="button" class="cat-pill" data-query="بودكاست عربي رائج">🎙️ بودكاست</button>
+          <button type="button" class="cat-pill" data-query="دراجات نارية وسيارات سباق">🚗 سيارات ودراجات</button>
+          <button type="button" class="cat-pill" data-query="وثائقيات وثقافة">💡 وثائقيات</button>
+          <button type="button" class="cat-pill" data-query="برمجة وذكاء اصطناعي">💻 تقنية وبرمجة</button>
+        </div>
+      </div>
+
+      <!-- Feed Header -->
+      <div class="feed-header-bar">
+        <h2 id="explore-feed-title" class="feed-heading">فيديوهات يوتيوب المقترحة (بدون إعلانات)</h2>
+        <button type="button" id="btn-return-player" class="btn-pill-action">
+          <i data-lucide="music-2"></i>
+          <span>الرجوع لمشغل الصوت</span>
+        </button>
+      </div>
+
+      <!-- Live Loading Spinner -->
+      <div id="explore-loading-indicator" class="feed-loader hidden">
+        <div class="spinner-circle"></div>
+        <p>جاري البحث وجلب الفيديوهات من يوتيوب...</p>
+      </div>
+
+      <!-- Dynamic YouTube Video Cards Grid -->
+      <div id="explore-cards-grid" class="explore-cards-grid">
+        <!-- Injected dynamically with real YouTube cards -->
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <p>NOIR AUDIO • مشغل وتصفح يوتيوب نقي 100% بدون إعلانات</p>
+    <div class="footer-links">
+      <span>تصميم أبيض وأسود مونوكروم</span>
+      <span>•</span>
+      <span>يعمل بالكامل في المتصفح</span>
+      <span>•</span>
+      <span>تحميل مباشر</span>
+    </div>
+  </footer>
+
+  <!-- App JS -->
+  <script src="app.js"></script>
+</body>
+</html>
