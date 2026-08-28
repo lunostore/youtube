@@ -537,33 +537,33 @@ function setupDownloadHandlers() {
     const safeTitle = (state.videoTitle || 'youtube_audio').replace(/[\/\\?%*:|"<>]/g, '_');
 
     statusBox.classList.remove('hidden');
-    statusTitle.textContent = '⚡ جاري استخراج الصوت...';
-    statusDesc.textContent = 'يتم البحث عن أفضل خادم متاح للتحميل المباشر...';
+    statusTitle.textContent = '⚡ جاري التحقق من السيرفر...';
+    statusDesc.textContent = '';
     btn.disabled = true;
 
     const audioUrl = await tryDownloadViaCobalt(videoId);
 
     if (audioUrl) {
-      statusTitle.textContent = '⏳ جاري تحضير الملف... قد يستغرق دقيقة';
-      statusDesc.textContent = 'السيرفر يستخرج الصوت — سيبدأ التنزيل تلقائياً عند الجهوز.';
-
-      // Open download URL directly — browser handles save dialog
-      window.open(audioUrl, '_blank');
-
-      setTimeout(() => {
-        statusTitle.textContent = '✅ تم فتح رابط التنزيل!';
-        statusDesc.textContent = 'إذا لم يبدأ التنزيل، تحقق من الـ Pop-ups أو انقر الرابط مجدداً.';
-      }, 2000);
-
+      statusTitle.textContent = '✅ السيرفر جاهز — اضغط لتحميل الملف';
+      statusDesc.innerHTML = `
+        <a href="${audioUrl}" target="_blank" rel="noopener"
+          style="display:inline-block;margin-top:10px;padding:10px 24px;background:#fff;color:#000;
+                 border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:1px;">
+          ⬇️ تحميل MP3
+        </a>
+        <br><small style="color:#888;margin-top:6px;display:block;">
+          قد يستغرق التحميل 30-60 ثانية بينما يستخرج السيرفر الصوت
+        </small>
+      `;
+      btn.disabled = false;
     } else {
       statusTitle.textContent = '⚠️ تعذّر التحميل حالياً';
-      statusDesc.textContent = 'الخوادم المتاحة لا تستجيب حالياً. المشغل يعمل بشكل كامل بدون إعلانات — يمكنك الاستماع مباشرة.';
+      statusDesc.textContent = 'السيرفر لا يستجيب. حاول مجدداً بعد قليل.';
+      setTimeout(() => {
+        btn.disabled = false;
+        statusBox.classList.add('hidden');
+      }, 4000);
     }
-
-    setTimeout(() => {
-      btn.disabled = false;
-      statusBox.classList.add('hidden');
-    }, 5000);
   });
 }
 
