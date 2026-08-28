@@ -1,6 +1,7 @@
 /**
  * NOIR AUDIO & YOUTUBE NO ADS - Complete Application Logic
  * 100% Client-Side • Real Live YouTube Search • Pure Ad-Free Playback
+ * v2.1 — Cobalt Download + Dynamic Invidious Search
  */
 
 // App State
