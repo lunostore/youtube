@@ -544,16 +544,17 @@ function setupDownloadHandlers() {
     const audioUrl = await tryDownloadViaCobalt(videoId);
 
     if (audioUrl) {
-      statusTitle.textContent = '🎉 بدأ التنزيل المباشر على جهازك!';
-      statusDesc.textContent = 'تجد المقطع الصوتي في مجلد التنزيلات (Downloads) بجهازك.';
+      statusTitle.textContent = '⏳ جاري تحضير الملف... قد يستغرق دقيقة';
+      statusDesc.textContent = 'السيرفر يستخرج الصوت — سيبدأ التنزيل تلقائياً عند الجهوز.';
 
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = audioUrl;
-      a.setAttribute('download', `${safeTitle}.mp3`);
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => document.body.removeChild(a), 1000);
+      // Open download URL directly — browser handles save dialog
+      window.open(audioUrl, '_blank');
+
+      setTimeout(() => {
+        statusTitle.textContent = '✅ تم فتح رابط التنزيل!';
+        statusDesc.textContent = 'إذا لم يبدأ التنزيل، تحقق من الـ Pop-ups أو انقر الرابط مجدداً.';
+      }, 2000);
+
     } else {
       statusTitle.textContent = '⚠️ تعذّر التحميل حالياً';
       statusDesc.textContent = 'الخوادم المتاحة لا تستجيب حالياً. المشغل يعمل بشكل كامل بدون إعلانات — يمكنك الاستماع مباشرة.';
