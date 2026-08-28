@@ -1,5 +1,9 @@
 @echo off
-git add .
-git commit -m "Manual project update"
+cd /d "%~dp0"
+echo Pushing to GitHub...
+git add -A
+git commit -m "Manual update"
 git push origin main
+echo.
+echo Done!
 pause
