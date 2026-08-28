@@ -502,12 +502,17 @@ function setupScrubber() {
 
 // COBALT-BASED IN-BROWSER MP3 DOWNLOAD
 // Uses public Cobalt API instances (cobalt.tools) which are regularly maintained
+// Verified working Cobalt instances with CORS + API enabled (checked 2026-08-28)
 const COBALT_INSTANCES = [
-  'https://cobalt.tools',
-  'https://dwnld.nicholi.es',
-  'https://cobalt.eshark.dev',
-  'https://cobalt.api.timelessnesses.me',
-  'https://cobalt.synzr.space',
+  'https://kityune.imput.net',
+  'https://nachos.imput.net',
+  'https://sunny.imput.net',
+  'https://blossom.imput.net',
+  'https://cobalt-backend.canine.tools',
+  'https://downloadapi.stuff.solutions',
+  'https://capi.3kh0.net',
+  'https://cobalt-api.meowing.de',
+  'https://cobalt-api.clxxped.lol',
 ];
 
 async function tryDownloadViaCobalt(videoId) {
@@ -601,9 +606,11 @@ function setupDownloadHandlers() {
 // REAL LIVE YOUTUBE SEARCH — Multi-Proxy (Invidious via CORS)
 // Strategy: fetch healthiest Invidious instances dynamically, then search
 // =========================================================================
+// Verified working CORS proxies (checked 2026-08-28)
 const CORS_PROXIES = [
   'https://api.allorigins.win/raw?url=',
-  'https://thingproxy.freeboard.io/fetch/',
+  'https://corsproxy.io/?url=',
+  'https://cors.sh/?',
 ];
 
 // Dynamically get a live Invidious instance with CORS enabled
