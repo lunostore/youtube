@@ -502,7 +502,7 @@ function setupScrubber() {
 
 // ─── YOUR YT-DLP API SERVER ─────────────────────────
 // ضع رابط السيرفر بتاعك هنا بعد الرفع على HuggingFace/Render/Railway
-const YTDLP_API = 'https://YOUR-SPACE.hf.space';
+const YTDLP_API = 'https://yousef891238-088098.hf.space';
 
 async function tryDownloadViaCobalt(videoId) {
   const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
